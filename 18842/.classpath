@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="/home/madhuri/DS/Lab1/18842/resourses/commons-io-2.4.jar"/>
+	<classpathentry kind="lib" path="/home/madhuri/DS/Lab1/18842/resourses/dropbox-core-sdk-1.7.6.jar"/>
+	<classpathentry kind="lib" path="/home/madhuri/DS/Lab1/18842/resourses/jsch-0.1.50.jar"/>
+	<classpathentry kind="lib" path="/home/madhuri/DS/Lab1/18842/resourses/snakeyaml-1.13.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>

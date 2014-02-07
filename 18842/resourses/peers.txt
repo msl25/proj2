@@ -1,0 +1,16 @@
+Peers :
+- Name : alice
+  IP   : 127.0.0.1
+  Port : 18001
+- Name : bob
+  IP   : 127.0.0.1
+  Port : 18002
+- Name : charlie
+  IP   : 127.0.0.1
+  Port : 18003
+- Name : dummy
+  IP   : 127.0.0.1
+  Port : 18010
+- Name : logger
+  IP   : 127.0.0.1
+  Port : 20001
