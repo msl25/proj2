@@ -1,0 +1,12 @@
+groups: 
+- Name : Group1
+  members :
+  - alice
+  - bob
+  - charlie
+
+- Name : Group2
+  members :
+  - daphnie
+  - bob
+  - charlie
