@@ -60,7 +60,6 @@ public class MessagePasser {
 
 	public void clearDelayedSendMessages() {
 		delayedSendMessages.clear();
-		;
 	}
 
 	public void clearDelayedReceiveMessages() {

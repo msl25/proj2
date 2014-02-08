@@ -1,11 +1,11 @@
 package ece842.core;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.Scanner;
 
-import com.sun.corba.se.spi.protocol.LocalClientRequestDispatcher;
-
 import ece842.configs.Configuration;
+import ece842.configs.Group;
 import ece842.services.ClockService;
 import ece842.services.LogicalClock;
 import ece842.services.VectorClock;
@@ -28,9 +28,14 @@ public class Application {
 			messagePasser = new MessagePasser(globalConf, id, localClock);
 		} catch (IOException e) {
 			System.out.println("Error initialing MessagerPasser: " + e.getMessage());
-			e.printStackTrace();
+			e.printStackTrace();		
 			System.exit(1);
 		}
+		
+//		Map<String,Group> groups = globalConf.getGroups();
+//		for(String s : groups.keySet()) {
+//			System.out.println(groups.get(s));
+//		}
 
 		Scanner scanIn = new Scanner(System.in);
 		System.out
