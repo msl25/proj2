@@ -18,6 +18,8 @@ import ece842.fileserver.Fileserver;
 public class Configuration {
 	private static final String PEERS = "Peers";
 	private static final String NAME = "Name";
+	private static final String MEMBERS = "members";
+	private static final String GROUPS = "groups";
 	private static final String IP = "IP";
 	private static final String PORT = "Port";
 	private static final String SEND_RULES = "sendRules";
@@ -27,18 +29,18 @@ public class Configuration {
 	private Map<String, Addr> peers = new HashMap<String, Addr>();
 	private List<Rule> sendRules = new ArrayList<Rule>();
 	private List<Rule> recvRules = new ArrayList<Rule>();
+	private Map<String, Group> groups = new HashMap<String, Group>();
 	private String clockType = null;
 
-	public Configuration (String conf_url) throws IOException{
-
+	public Configuration(String conf_url) throws IOException {
 		this.conf_url = conf_url;
-
 		this.updateClockType();
 		this.updatePeers();
+		this.updateGroups();
 		this.updateRules();
 	}
 
-	private void updateClockType () throws IOException {
+	private void updateClockType() throws IOException {
 		URL clockTypeUrl = new URL(this.conf_url.concat("clockType.txt"));
 		URLConnection con = clockTypeUrl.openConnection();
 		InputStream in = con.getInputStream();
@@ -56,18 +58,43 @@ public class Configuration {
 
 	private void updatePeers() throws IOException {
 		Yaml yaml = new Yaml();
-		String filecontents = Fileserver.getFile(this.conf_url.concat("peers.txt"));
+		String filecontents = Fileserver.getFile(this.conf_url
+				.concat("peers.txt"));
 		InputStream in = new ByteArrayInputStream(filecontents.getBytes());
 		@SuppressWarnings("unchecked")
 		Map<String, List<Map<String, Object>>> yamlData = (Map<String, List<Map<String, Object>>>) yaml
-		.load(in);
+				.load(in);
 
 		List<Map<String, Object>> connections = yamlData.get(PEERS);
 		for (Map<String, Object> connection : connections) {
-			Addr connectionParameters = new Addr(
-					connection.get(IP), connection.get(PORT));
-			this.peers.put((String) connection.get(NAME),
-					connectionParameters);
+			Addr connectionParameters = new Addr(connection.get(IP),
+					connection.get(PORT));
+			this.peers.put((String) connection.get(NAME), connectionParameters);
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	public void updateGroups() throws IOException {
+		this.groups.clear();
+		Yaml yaml = new Yaml();
+		String filecontents = Fileserver.getFile(this.conf_url
+				.concat("groups.txt"));
+		InputStream in = new ByteArrayInputStream(filecontents.getBytes());
+
+		Map<String, List<Map<String, Object>>> yamlData = (Map<String, List<Map<String, Object>>>) yaml
+				.load(in);
+
+		List<Map<String, Object>> confGroups = yamlData.get(GROUPS);
+		if (confGroups != null) {
+			for (Map<String, Object> group : confGroups) {
+				String name = (String) group.get(NAME);
+				Group groupInstance = new Group(name);
+				List<Object> members = (List<Object>) group.get(MEMBERS);
+				for (Object member : members) {
+					groupInstance.addMember((String) member);
+				}
+				this.groups.put(name, groupInstance);
+			}
 		}
 	}
 
@@ -75,11 +102,12 @@ public class Configuration {
 		this.sendRules.clear();
 		this.recvRules.clear();
 		Yaml yaml = new Yaml();
-		String filecontents = Fileserver.getFile(this.conf_url.concat("rules.txt"));
+		String filecontents = Fileserver.getFile(this.conf_url
+				.concat("rules.txt"));
 		InputStream in = new ByteArrayInputStream(filecontents.getBytes());
 		@SuppressWarnings("unchecked")
 		Map<String, List<Map<String, Object>>> yamlData = (Map<String, List<Map<String, Object>>>) yaml
-		.load(in);
+				.load(in);
 
 		// sendRules
 		List<Map<String, Object>> sendRules = yamlData.get(SEND_RULES);
@@ -99,7 +127,7 @@ public class Configuration {
 
 		// defaultRule
 		Map<String, Object> defaultParameters = new HashMap<String, Object>();
-		defaultParameters.put("action","default");
+		defaultParameters.put("action", "default");
 		this.sendRules.add(new Rule(defaultParameters));
 		this.recvRules.add(new Rule(defaultParameters));
 	}
@@ -110,6 +138,10 @@ public class Configuration {
 
 	public List<Rule> getSendRules() {
 		return this.sendRules;
+	}
+
+	public Map<String, Group> getGroups() {
+		return this.groups;
 	}
 
 	public List<Rule> getReceiveRules() {
