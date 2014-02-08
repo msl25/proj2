@@ -17,13 +17,15 @@ public class Application {
 	public static Configuration globalConf;
 	public static MessagePasser messagePasser;
 	public static ClockService localClock;
-	public static ClockService multicastClock;
-	public static Map<String, String> groupName = new HashMap<String, String>();
+	public static ClockService groupClock;
+	public static Map<String,Group> groups ; 
 	public static MulticastService multicastSvc;
 	
 	public static void main(String[] args) throws IOException {
 		id = args[1];
 		globalConf = new Configuration(args[0]);
+		groups = globalConf.getGroups();
+		
 		if (globalConf.getClockType().equals("logical"))
 			localClock = new LogicalClock();
 		else
@@ -39,10 +41,6 @@ public class Application {
 			System.exit(1);
 		}
 		
-//		Map<String,Group> groups = globalConf.getGroups();
-//		for(String s : groups.keySet()) {
-//			System.out.println(groups.get(s));
-//		}
 
 		Scanner scanIn = new Scanner(System.in);
 		System.out
@@ -91,13 +89,14 @@ public class Application {
 		System.out.println("\nLogging? (y/n)");
 		String choice = scanIn.nextLine();
 
-		if (groupName.containsKey(dest)) {
-			Message msg = new Message(dest, kind, data);
+		if (groups.containsKey(dest)) {
+			Message msg = new TimeStampedMessage(dest, kind, data);
 			handleMulticast(messagePasser, msg);
 
 		} else {
 			Message message = new TimeStampedMessage(dest, kind, data);
 			try {
+				message.setSource(id); //XXX
 				messagePasser.send(message);
 				/* Sending the same message to logger */
 				if (choice.equalsIgnoreCase("y")) {
@@ -122,7 +121,6 @@ public class Application {
 
 	private static void handleReceiveRequest(MessagePasser messagePasser) {
 		System.out.println("\nLogging? (y/n)");
-		@SuppressWarnings("resource")
 		Scanner scanIn = new Scanner(System.in);
 		String choice = scanIn.nextLine();
 
@@ -143,7 +141,7 @@ public class Application {
 					Message msg = new TimeStampedMessage("logger", "log",
 							message.toString());
 					msg.setSource(id);
-					localClock.getNewTimeStamp(); // XXX
+					localClock.getNewTimeStamp(); 
 					msg.setTimestamp(localClock.getClock());
 					messagePasser.sendMessage(msg);
 				}
@@ -160,17 +158,16 @@ public class Application {
 
 	private static void handleMulticast(MessagePasser messagepasser, Message msg) {
 		
-		multicastSvc = new MulticastService();
-		multicastClock = new VectorClock(globalConf, id);
-
-		try {
-			messagePasser = new MessagePasser(globalConf, id, multicastClock);
-			multicastSvc.multicastSend(messagepasser, msg);
-		} catch (IOException e) {
-			System.out.println("Error initialing MessagerPasser for multicast: "
-					+ e.getMessage());
-			e.printStackTrace();
-			System.exit(1);
+		//get group from group name
+		Group myGroup = groups.get(msg.getDest());
+		
+		if(myGroup.getGroupClock()==null) {
+			//TODO
+			groupClock = new VectorClock(globalConf, id);
+			//groupClock.getNewTimeStamp();
+			myGroup.setGroupClock(groupClock);
 		}
+		//messagePasser = new MessagePasser(globalConf, id, myGroup.getGroupClock());
+		myGroup.getMulticastsvc().multicastSend(messagepasser, msg, myGroup);
 	}
 }

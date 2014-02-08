@@ -13,11 +13,15 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import ece842.actions.ActionFactory;
 import ece842.configs.Configuration;
+import ece842.configs.Group;
 import ece842.configs.Rule;
 import ece842.services.ClockService;
 
@@ -31,7 +35,8 @@ public class MessagePasser {
 	private List<Message> delayedReceiveMessages = new ArrayList<Message>();
 	private List<Message> messagesReadyToBeDelivered = new ArrayList<Message>();
 	private ClockService localClock = null;
-	
+	private Map<String, Map<String, Integer>> AckMap = new HashMap<String, Map<String, Integer>>();
+
 	public MessagePasser(Configuration conf, String id, ClockService localClock)
 			throws IOException {
 		this.id = id;
@@ -66,13 +71,13 @@ public class MessagePasser {
 		delayedReceiveMessages.clear();
 	}
 
-	void send(Message message) throws IOException {
-				
-		this.configuration.updateRules();		
+	public void send(Message message) throws IOException {
+
+		this.configuration.updateRules();
 		TimeStamp timestamp = this.localClock.getNewTimeStamp();
-		
+
 		message.setTimestamp(timestamp);
-		message.setSource(id);
+		//message.setSource(id); //XXX
 		message.setSequenceNumber(seqNo.getAndIncrement());
 
 		for (Rule rule : configuration.getSendRules()) {
@@ -85,14 +90,16 @@ public class MessagePasser {
 	}
 
 	Message receive() throws IOException {
-		
+
 		if (messagesReadyToBeDelivered.isEmpty()) {
 			Message rxMessage = null;
 			do {
-				rxMessage = (TimeStampedMessage)receiveMessage();
-				
+				rxMessage = (TimeStampedMessage) receiveMessage();
 				if (rxMessage != null) {
-					receivedMessages.add(rxMessage);
+					if (rxMessage.getMulticastMsg() != null)
+						receiveMulticastMsg(rxMessage);
+					else
+						receivedMessages.add(rxMessage);
 				}
 			} while (rxMessage != null);
 			if (!receivedMessages.isEmpty()) {
@@ -131,8 +138,7 @@ public class MessagePasser {
 	}
 
 	public void sendMessage(Message message) {
-		String destIP = configuration.getPeers().get(message.getDest())
-				.getIP();
+		String destIP = configuration.getPeers().get(message.getDest()).getIP();
 		int destPort = configuration.getPeers().get(message.getDest())
 				.getPort();
 
@@ -169,7 +175,7 @@ public class MessagePasser {
 					new BufferedInputStream(byteStream));
 			Message message = (Message) is.readObject();
 			is.close();
-			
+
 			return message;
 		} catch (InterruptedIOException e) {
 			// System.out.println("No messages");
@@ -181,8 +187,51 @@ public class MessagePasser {
 		}
 		return null;
 	}
-//	
-//	public void displayLogs() {
-//		this.clockType.display(messagesReadyToBeDelivered);
-//	}
+
+	public void receiveMulticastMsg(Message rxMsg) {
+
+		boolean isPresent = false;
+		boolean isReceivable = true;
+
+		Map<String, Integer> nodeMap = new HashMap<String, Integer>();
+		Group groupName = configuration.getGroups().get(
+				rxMsg.getMulticastMsg().getGroupName());
+
+		// Check whether nodeMap is already created
+		if (AckMap.containsKey(rxMsg.getMulticastMsg().getTimeStamp().toString()))
+			nodeMap = AckMap.get(rxMsg.getMulticastMsg().getTimeStamp().toString());
+		else
+			nodeMap = new HashMap<String, Integer>();
+
+		// check if originator is given process, if not TODO
+		// Check whether holdQueue has this msg already
+		for (Integer value : nodeMap.values()) {
+			if (value == 1) {
+				isPresent = true;
+				break;
+			}
+		}
+
+		nodeMap.put(rxMsg.getSource(), 1);
+		AckMap.put(rxMsg.getMulticastMsg().getTimeStamp().toString(), nodeMap);
+
+		// Insert into holdQueue
+		if (!isPresent) {
+			groupName.insertHoldQueue(rxMsg);
+		}
+
+		// Add to receive buffer
+		Collection<String> members = groupName.getMembers();
+		for (String m : members) {
+			if (!nodeMap.containsKey(m) || nodeMap.get(m) != 1) {
+				isReceivable = false;
+				break;
+			}
+		}
+		if (isReceivable) {
+			// remove from holdQueue
+			groupName.removeHoldQueue(rxMsg.getMulticastMsg().getTimeStamp());
+			receivedMessages.add(rxMsg);
+		}
+	}
 }

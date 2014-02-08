@@ -2,11 +2,16 @@ package ece842.core;
 
 import java.io.Serializable;
 
-public class MulticastMessage extends TimeStampedMessage implements Serializable {
+@SuppressWarnings("serial")
+public class MulticastMessage implements Serializable {
 	
 	private TimeStamp timeStamp;
 	private String GroupName;
 	
+	public MulticastMessage(TimeStamp ts, String grpName) {
+		this.timeStamp = ts;
+		this.GroupName = grpName;
+	}
 	public TimeStamp getTimeStamp() {
 		return timeStamp;
 	}

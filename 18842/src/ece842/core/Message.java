@@ -76,6 +76,13 @@ public class Message implements Serializable {
 	public void setTimestamp(TimeStamp ts ) {
 	}
 	
+	public MulticastMessage getMulticastMsg() {
+		return null;
+	}
+
+	public void setMulticastMsg(MulticastMessage multicastMsg) {
+		//
+	}
 	@Override
 	public String toString() {
 		return String.format("%s %s %s %s %s %s\n", this.getSource(), this.getDest(), this.getSequenceNumber(), this.getKind(),this.getDupe(), this.getData().toString()); 

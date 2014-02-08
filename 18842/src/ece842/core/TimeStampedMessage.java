@@ -6,16 +6,28 @@ import java.io.Serializable;
 public class TimeStampedMessage extends Message implements Serializable {
 
 	private TimeStamp timestamp;
+	private MulticastMessage multicastMsg;
+	
+	
 
 	public TimeStampedMessage(String dest, String kind, String data) {
 		super(dest, kind, data);
 		this.timestamp = new TimeStamp();
+		this.multicastMsg = null;
 	}
 	
 	public TimeStampedMessage() {
 		// TODO Auto-generated constructor stub
 	}
+	
+	public MulticastMessage getMulticastMsg() {
+		return multicastMsg;
+	}
 
+	public void setMulticastMsg(MulticastMessage multicastMsg) {
+		this.multicastMsg = multicastMsg;
+	}
+	
 	@Override
 	public TimeStamp getTimestamp() {
 		return timestamp;
