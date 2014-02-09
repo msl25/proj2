@@ -54,7 +54,7 @@ public class MessagePasser {
 	private DatagramSocket socket;
 	private Configuration configuration;
 	private AtomicInteger seqNo = new AtomicInteger(0);
-	//private List<Message> receivedMessages = new ArrayList<Message>();
+	// private List<Message> receivedMessages = new ArrayList<Message>();
 	private List<Message> delayedSendMessages = new ArrayList<Message>();
 	private List<Message> delayedReceiveMessages = new ArrayList<Message>();
 	private List<Message> messagesReadyToBeDelivered = new ArrayList<Message>();
@@ -128,30 +128,29 @@ public class MessagePasser {
 
 	void receiveThread() throws IOException, InterruptedException {
 		Message rxMessage = (TimeStampedMessage) receiveMessage();
-		if(rxMessage == null) {
+		if (rxMessage == null) {
 			return;
 		}
-//		if (rxMessage != null) {
-//			if (rxMessage.getMulticastMsg() != null)
-//				receiveMulticastMsg(rxMessage);
-//			else
-//				receivedMessages.add(rxMessage);
-//		}
+		// if (rxMessage != null) {
+		// if (rxMessage.getMulticastMsg() != null)
+		// receiveMulticastMsg(rxMessage);
+		// else
+		// receivedMessages.add(rxMessage);
+		// }
 
 		this.configuration.updateRules();
 		List<Message> messages = new ArrayList<Message>();
 		for (Rule rule : configuration.getReceiveRules()) {
 			if (rule.isSatisfied(rxMessage)) {
-				messages.addAll(ActionFactory
-						.getActionExecutor(rule.getAction())
-						.executeReceive(rxMessage, this));
+				messages.addAll(ActionFactory.getActionExecutor(
+						rule.getAction()).executeReceive(rxMessage, this));
 				break;
 			}
 		}
-		
-		for(Message m : messages) {
-			if (rxMessage.getMulticastMsg() != null)
-				receiveMulticastMsg(rxMessage);
+
+		for (Message m : messages) {
+			if (m.getMulticastMsg() != null)
+				receiveMulticastMsg(m);
 			else
 				this.messagesReadyToBeDelivered.add(m);
 		}
@@ -232,8 +231,8 @@ public class MessagePasser {
 			if (!rxMsg.getSource().equalsIgnoreCase(rxMsg.getDest())) {
 				Collection<String> sendTo = groupName.getMembers();
 				for (String s : sendTo) {
-					Message msg = new TimeStampedMessage(s, rxMsg.getKind(), rxMsg
-							.getData().toString());
+					Message msg = new TimeStampedMessage(s, rxMsg.getKind(),
+							rxMsg.getData().toString());
 					msg.setMulticastMsg(rxMsg.getMulticastMsg());
 					try {
 						send(msg);
@@ -243,7 +242,6 @@ public class MessagePasser {
 					}
 				}
 			}
-
 		}
 
 		// check if originator is given process, if not TODO
@@ -273,8 +271,11 @@ public class MessagePasser {
 		}
 		if (isReceivable) {
 			// remove from holdQueue
-			groupName.removeHoldQueue(rxMsg.getMulticastMsg().getTimeStamp());
-			this.messagesReadyToBeDelivered.add(rxMsg);
+			Message temp = groupName.removeHoldQueue(rxMsg.getMulticastMsg()
+					.getTimeStamp());
+			if (temp != null) {
+				this.messagesReadyToBeDelivered.add(rxMsg);
+			}
 		}
 	}
 }

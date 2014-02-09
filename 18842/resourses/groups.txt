@@ -7,6 +7,6 @@ groups:
 
 - Name : Group2
   members :
-  - daphnie
+  - dummy
   - bob
   - charlie

@@ -1,16 +1,17 @@
 sendRules :
-- action : duplicate 
-  src    : alice	    
-  dest   : bob	    
-  kind   : req	      	
 - action : delay 
   src    : bob	    
   dest   : alice	    
-  kind   : test	      
+  kind   : td1     
+- action : duplicate 
+  src    : alice	        
+  kind   : td3
 
 receiveRules :  
 - action : duplicate 
-  src    : alice	    
-  dest   : bob	    
-  kind   : req	      
+  dest   : bob	        
+  kind   : td4
+- action : delay    
+  dest   : bob    
+  kind   : td2
     

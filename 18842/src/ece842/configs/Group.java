@@ -18,7 +18,7 @@ public class Group {
 	private Set<String> members;
 	private ClockService groupClock;
 	private MulticastService multicastsvc;
-	private Map<TimeStamp, Message> holdQueue; 
+	private Map<String, Message> holdQueue; 
 	
 	
 	public Group(String name) {
@@ -26,7 +26,7 @@ public class Group {
 		this.members = new HashSet<String>();
 		this.groupClock = null;
 		this.multicastsvc = new MulticastService();
-		this.holdQueue = new HashMap<TimeStamp, Message>(); 
+		this.holdQueue = new HashMap<String, Message>(); 
 	}
 	
 	public String getName() {
@@ -49,11 +49,11 @@ public class Group {
 	}
 	
 	public void insertHoldQueue(Message msg) {
-		this.holdQueue.put(msg.getMulticastMsg().getTimeStamp(), msg);
+		this.holdQueue.put(msg.getMulticastMsg().getTimeStamp().toString(), msg);
 	}
 	
 	public Message removeHoldQueue(TimeStamp ts) {
-		return this.holdQueue.remove(ts);
+		return this.holdQueue.remove(ts.toString());
 	}
 	@Override
 	public String toString() {
@@ -86,10 +86,10 @@ public class Group {
 	public void setMulticastsvc(MulticastService multicastsvc) {
 		this.multicastsvc = multicastsvc;
 	}
-	public Map<TimeStamp, Message> getHoldQueue() {
+	public Map<String, Message> getHoldQueue() {
 		return holdQueue;
 	}
-	public void setHoldQueue(Map<TimeStamp, Message> holdQueue) {
+	public void setHoldQueue(Map<String, Message> holdQueue) {
 		this.holdQueue = holdQueue;
 	}
 }
