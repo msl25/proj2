@@ -17,6 +17,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import ece842.actions.ActionFactory;
@@ -26,6 +27,29 @@ import ece842.configs.Rule;
 import ece842.services.ClockService;
 
 public class MessagePasser {
+
+	LinkedBlockingQueue<Message> temp = new LinkedBlockingQueue<Message>();
+
+	private class RecvThread implements Runnable {
+
+		@Override
+		public void run() {
+			while (true) {
+				try {
+					receiveThread();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+
+		}
+
+	}
+
 	private String id;
 	private DatagramSocket socket;
 	private Configuration configuration;
@@ -45,6 +69,8 @@ public class MessagePasser {
 		this.localClock = localClock;
 		this.socket = new DatagramSocket(port);
 		this.socket.setSoTimeout(1000);
+		// Start receive thread
+		new Thread(new RecvThread()).start();
 	}
 
 	public void addDelayedSendMessages(Message delayedMessage) {
@@ -77,7 +103,7 @@ public class MessagePasser {
 		TimeStamp timestamp = this.localClock.getNewTimeStamp();
 
 		message.setTimestamp(timestamp);
-		//message.setSource(id); //XXX
+		message.setSource(id); // XXX
 		message.setSequenceNumber(seqNo.getAndIncrement());
 
 		for (Rule rule : configuration.getSendRules()) {
@@ -89,47 +115,42 @@ public class MessagePasser {
 		}
 	}
 
-	Message receive() throws IOException {
+	Message receive() {
+		if (!messagesReadyToBeDelivered.isEmpty()) {
+			Message message = messagesReadyToBeDelivered.get(0);
+			messagesReadyToBeDelivered.remove(0);
+			this.localClock.getNewTimeStamp();
+			this.localClock.updateClock(message.getTimestamp());
+			return message;
+		} else
+			return null;
+	}
 
-		if (messagesReadyToBeDelivered.isEmpty()) {
-			Message rxMessage = null;
-			do {
-				rxMessage = (TimeStampedMessage) receiveMessage();
-				if (rxMessage != null) {
-					if (rxMessage.getMulticastMsg() != null)
-						receiveMulticastMsg(rxMessage);
-					else
-						receivedMessages.add(rxMessage);
-				}
-			} while (rxMessage != null);
-			if (!receivedMessages.isEmpty()) {
-				for (Message receivedMessage : receivedMessages) {
-					this.configuration.updateRules();
-					for (Rule rule : configuration.getReceiveRules()) {
-						if (rule.isSatisfied(receivedMessage)) {
-							messagesReadyToBeDelivered.addAll(ActionFactory
-									.getActionExecutor(rule.getAction())
-									.executeReceive(receivedMessage, this));
-							break;
-						}
+	void receiveThread() throws IOException, InterruptedException {
+		Message rxMessage = null;
+
+		rxMessage = (TimeStampedMessage) receiveMessage();
+		if (rxMessage != null) {
+			if (rxMessage.getMulticastMsg() != null)
+				receiveMulticastMsg(rxMessage);
+			else
+				receivedMessages.add(rxMessage);
+		}
+
+		if (!receivedMessages.isEmpty()) {
+			for (Message receivedMessage : receivedMessages) {
+				this.configuration.updateRules();
+				for (Rule rule : configuration.getReceiveRules()) {
+					if (rule.isSatisfied(receivedMessage)) {
+						messagesReadyToBeDelivered.addAll(ActionFactory
+								.getActionExecutor(rule.getAction())
+								.executeReceive(receivedMessage, this));
+						break;
 					}
 				}
-				receivedMessages.clear();
-				if (!messagesReadyToBeDelivered.isEmpty()) {
-					Message message = messagesReadyToBeDelivered.get(0);
-					messagesReadyToBeDelivered.remove(0);
-					this.localClock.getNewTimeStamp();
-					this.localClock.updateClock(message.getTimestamp());
-					return message;
-				}
 			}
-			return null;
+			receivedMessages.clear();
 		}
-		Message message = messagesReadyToBeDelivered.get(0);
-		messagesReadyToBeDelivered.remove(0);
-		this.localClock.getNewTimeStamp();
-		this.localClock.updateClock(message.getTimestamp());
-		return message;
 
 	}
 
@@ -198,10 +219,27 @@ public class MessagePasser {
 				rxMsg.getMulticastMsg().getGroupName());
 
 		// Check whether nodeMap is already created
-		if (AckMap.containsKey(rxMsg.getMulticastMsg().getTimeStamp().toString()))
-			nodeMap = AckMap.get(rxMsg.getMulticastMsg().getTimeStamp().toString());
-		else
+		if (AckMap.containsKey(rxMsg.getMulticastMsg().getTimeStamp()
+				.toString()))
+			nodeMap = AckMap.get(rxMsg.getMulticastMsg().getTimeStamp()
+					.toString());
+		else {
 			nodeMap = new HashMap<String, Integer>();
+			// Multicast the same msg
+			if (!rxMsg.getSource().equalsIgnoreCase(rxMsg.getDest())) {
+				Collection<String> sendTo = groupName.getMembers();
+				for (String s : sendTo) {
+					rxMsg.setDest(s);
+					try {
+						send(rxMsg);
+					} catch (IOException e) {
+						System.out.println("Multicast msg from " + id + "to "
+								+ s + "failed..!");
+					}
+				}
+			}
+
+		}
 
 		// check if originator is given process, if not TODO
 		// Check whether holdQueue has this msg already

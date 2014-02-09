@@ -16,34 +16,26 @@ public class MulticastService {
 
 	public void multicastSend(MessagePasser messagepasser, Message message,
 			Group myGroup) {
-		/*
-		 * for(String s : groups.keySet()) {
-		 * 
-		 * System.out.println(groups.get(s)); }
-		 */
-
-		Collection<String> sendFrom = myGroup.getMembers();
+	
 		Collection<String> sendTo = myGroup.getMembers();
 
 		MulticastMessage multicastMsg = new MulticastMessage(myGroup
 				.getGroupClock().getNewTimeStamp(), myGroup.getName());
 
-		for (String s : sendFrom) {
+		for (String s : sendTo) {
 
-			for (String s1 : sendTo) {
-				Message msg = new TimeStampedMessage(s1, message.getKind(),
-						message.getData().toString());
-				msg.setSource(s);
-				msg.setMulticastMsg(multicastMsg);
-				try {
-					messagepasser.send(msg);
-					System.out.println("Sent from " + msg.getSource() + "--> "
-							+ msg.getDest());
-				} catch (IOException e) {
-					System.out.println("Couldn't send msg to " + s1 + "from"
-							+ s);
-				}
+			Message msg = new TimeStampedMessage(s, message.getKind(), message
+					.getData().toString());
+			msg.setMulticastMsg(multicastMsg);
+			try {
+				messagepasser.send(msg);
+				System.out.println("Sent from " + msg.getSource() + "--> "
+						+ msg.getDest());
+			} catch (IOException e) {
+				System.out.println("Couldn't send msg to " + s + "from"
+						+ message.getSource());
 			}
+
 		}
 
 	}

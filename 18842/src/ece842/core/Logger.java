@@ -61,18 +61,12 @@ public class Logger {
 		System.out.println("\nWaiting for message...");
 		Message message = null;
 		while (true){
-			try {
-				message = messagePasser.receive();
-				if (message != null) {
-					msgList.add((TimeStampedMessage) message);
-				} else {
+			message = messagePasser.receive();
+			if (message != null) {
+				msgList.add((TimeStampedMessage) message);
+			} else {
 //					System.out.println("No Message");
-					break;
-				}
-			} catch (IOException e) {
-				System.out.println("Error while sending the message, error was:"
-						+ e.getMessage());
-				e.printStackTrace();
+				break;
 			}
 		}
 		if (globalConf.getClockType() == "logical") {

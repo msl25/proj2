@@ -126,32 +126,26 @@ public class Application {
 
 		System.out.println("\nWaiting for message...");
 		Message message = null;
-		try {
-			message = messagePasser.receive();
-			if (message != null) {
-				System.out
-						.println(String
-								.format("Message received from %s. with seqNo:%s Request Type:%s, Duplicate Flag is %s, Data is as follows:%s\n",
-										message.getSource(),
-										message.getSequenceNumber(),
-										message.getKind(), message.getDupe(),
-										message.getData()));
+		message = messagePasser.receive();
+		if (message != null) {
+			System.out
+					.println(String
+							.format("Message received from %s. with seqNo:%s Request Type:%s, Duplicate Flag is %s, Data is as follows:%s\n",
+									message.getSource(),
+									message.getSequenceNumber(),
+									message.getKind(), message.getDupe(),
+									message.getData()));
 
-				if (choice.equalsIgnoreCase("y")) {
-					Message msg = new TimeStampedMessage("logger", "log",
-							message.toString());
-					msg.setSource(id);
-					localClock.getNewTimeStamp(); 
-					msg.setTimestamp(localClock.getClock());
-					messagePasser.sendMessage(msg);
-				}
-			} else {
-				System.out.println("No Message");
+			if (choice.equalsIgnoreCase("y")) {
+				Message msg = new TimeStampedMessage("logger", "log",
+						message.toString());
+				msg.setSource(id);
+				localClock.getNewTimeStamp(); 
+				msg.setTimestamp(localClock.getClock());
+				messagePasser.sendMessage(msg);
 			}
-		} catch (IOException e) {
-			System.out.println("Error while sending the message, error was:"
-					+ e.getMessage());
-			e.printStackTrace();
+		} else {
+			System.out.println("No Message");
 		}
 
 	}
