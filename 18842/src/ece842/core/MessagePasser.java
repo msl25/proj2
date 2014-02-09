@@ -54,7 +54,7 @@ public class MessagePasser {
 	private DatagramSocket socket;
 	private Configuration configuration;
 	private AtomicInteger seqNo = new AtomicInteger(0);
-	private List<Message> receivedMessages = new ArrayList<Message>();
+	//private List<Message> receivedMessages = new ArrayList<Message>();
 	private List<Message> delayedSendMessages = new ArrayList<Message>();
 	private List<Message> delayedReceiveMessages = new ArrayList<Message>();
 	private List<Message> messagesReadyToBeDelivered = new ArrayList<Message>();
@@ -127,31 +127,34 @@ public class MessagePasser {
 	}
 
 	void receiveThread() throws IOException, InterruptedException {
-		Message rxMessage = null;
+		Message rxMessage = (TimeStampedMessage) receiveMessage();
+		if(rxMessage == null) {
+			return;
+		}
+//		if (rxMessage != null) {
+//			if (rxMessage.getMulticastMsg() != null)
+//				receiveMulticastMsg(rxMessage);
+//			else
+//				receivedMessages.add(rxMessage);
+//		}
 
-		rxMessage = (TimeStampedMessage) receiveMessage();
-		if (rxMessage != null) {
+		this.configuration.updateRules();
+		List<Message> messages = new ArrayList<Message>();
+		for (Rule rule : configuration.getReceiveRules()) {
+			if (rule.isSatisfied(rxMessage)) {
+				messages.addAll(ActionFactory
+						.getActionExecutor(rule.getAction())
+						.executeReceive(rxMessage, this));
+				break;
+			}
+		}
+		
+		for(Message m : messages) {
 			if (rxMessage.getMulticastMsg() != null)
 				receiveMulticastMsg(rxMessage);
 			else
-				receivedMessages.add(rxMessage);
+				this.messagesReadyToBeDelivered.add(m);
 		}
-
-		if (!receivedMessages.isEmpty()) {
-			for (Message receivedMessage : receivedMessages) {
-				this.configuration.updateRules();
-				for (Rule rule : configuration.getReceiveRules()) {
-					if (rule.isSatisfied(receivedMessage)) {
-						messagesReadyToBeDelivered.addAll(ActionFactory
-								.getActionExecutor(rule.getAction())
-								.executeReceive(receivedMessage, this));
-						break;
-					}
-				}
-			}
-			receivedMessages.clear();
-		}
-
 	}
 
 	void exit() {
@@ -229,9 +232,11 @@ public class MessagePasser {
 			if (!rxMsg.getSource().equalsIgnoreCase(rxMsg.getDest())) {
 				Collection<String> sendTo = groupName.getMembers();
 				for (String s : sendTo) {
-					rxMsg.setDest(s);
+					Message msg = new TimeStampedMessage(s, rxMsg.getKind(), rxMsg
+							.getData().toString());
+					msg.setMulticastMsg(rxMsg.getMulticastMsg());
 					try {
-						send(rxMsg);
+						send(msg);
 					} catch (IOException e) {
 						System.out.println("Multicast msg from " + id + "to "
 								+ s + "failed..!");
@@ -269,7 +274,7 @@ public class MessagePasser {
 		if (isReceivable) {
 			// remove from holdQueue
 			groupName.removeHoldQueue(rxMsg.getMulticastMsg().getTimeStamp());
-			receivedMessages.add(rxMsg);
+			this.messagesReadyToBeDelivered.add(rxMsg);
 		}
 	}
 }
