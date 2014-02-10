@@ -17,7 +17,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -28,8 +27,6 @@ import ece842.configs.Rule;
 import ece842.services.ClockService;
 
 public class MessagePasser {
-
-	LinkedBlockingQueue<Message> temp = new LinkedBlockingQueue<Message>();
 	
 	private class RecvThread implements Runnable {
 
@@ -46,9 +43,7 @@ public class MessagePasser {
 					e.printStackTrace();
 				}
 			}
-
 		}
-
 	}
 
 	private String id;
@@ -98,7 +93,7 @@ public class MessagePasser {
 		delayedReceiveMessages.clear();
 	}
 
-	public void send(Message message) throws IOException {
+	public synchronized void send(Message message) throws IOException {
 
 		this.configuration.updateRules();
 		TimeStamp timestamp = this.localClock.getNewTimeStamp();
@@ -234,12 +229,11 @@ public class MessagePasser {
 					Message msg = new TimeStampedMessage(s, rxMsg.getKind(),
 							rxMsg.getData().toString());
 					msg.setMulticastMsg(rxMsg.getMulticastMsg());
-					try {
-						send(msg);
-					} catch (IOException e) {
-						System.out.println("Multicast msg from " + id + "to "
-								+ s + "failed..!");
-					}
+
+						//send(msg);
+
+						new Thread(new MessageFlooder(this, msg)).start();
+
 				}
 			}
 		}

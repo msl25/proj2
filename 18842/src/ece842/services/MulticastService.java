@@ -7,6 +7,7 @@ import java.util.List;
 
 import ece842.configs.Group;
 import ece842.core.Message;
+import ece842.core.MessageFlooder;
 import ece842.core.MessagePasser;
 import ece842.core.MulticastMessage;
 import ece842.core.TimeStamp;
@@ -20,8 +21,6 @@ public class MulticastService {
 		Collection<String> sendTo = myGroup.getMembers();
 		String sender = messagepasser.getLocalId();
 		myGroup.getGroupClock().incrementSendCount();
-		// myGroup.getGroupClock().incrementTimestamp(sender);
-		// TimeStamp ts = myGroup.getGroupClock().getTimeStamp();
 		TimeStamp ts = myGroup.getGroupClock().getTimeStamp().clone();
 		ts.setTimeStampValue(sender, myGroup.getGroupClock().getSendCount());
 
@@ -32,11 +31,7 @@ public class MulticastService {
 			Message msg = new TimeStampedMessage(s, message.getKind(), message
 					.getData().toString());
 			msg.setMulticastMsg(multicastMsg);
-			try {
-				messagepasser.send(msg);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
+			new Thread(new MessageFlooder(messagepasser, msg)).start();
 		}
 	}
 }

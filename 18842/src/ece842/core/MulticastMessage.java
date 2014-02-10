@@ -29,6 +29,4 @@ public class MulticastMessage implements Serializable {
 	public void setGroupName(String groupName) {
 		GroupName = groupName;
 	}
-	
-	
 }
