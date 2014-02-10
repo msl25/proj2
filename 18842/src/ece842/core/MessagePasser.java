@@ -27,7 +27,7 @@ import ece842.configs.Rule;
 import ece842.services.ClockService;
 
 public class MessagePasser {
-	
+
 	private class RecvThread implements Runnable {
 
 		@Override
@@ -230,10 +230,12 @@ public class MessagePasser {
 							rxMsg.getData().toString());
 					msg.setMulticastMsg(rxMsg.getMulticastMsg());
 
-						//send(msg);
-
-						new Thread(new MessageFlooder(this, msg)).start();
-
+					try {
+						send(msg);
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
 				}
 			}
 		}

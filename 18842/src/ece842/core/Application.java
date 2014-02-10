@@ -179,12 +179,6 @@ public class Application {
 			return;
 		}
 
-		// if(myGroup.getGroupClock()==null) {
-		// groupClock = new VectorClock(globalConf, id);
-		// myGroup.setGroupClock(groupClock);
-		// }
-		// messagePasser = new MessagePasser(globalConf, id,
-		// myGroup.getGroupClock());
 		myGroup.getMulticastsvc().multicastSend(messagepasser, msg, myGroup);
 	}
 }

@@ -31,7 +31,12 @@ public class MulticastService {
 			Message msg = new TimeStampedMessage(s, message.getKind(), message
 					.getData().toString());
 			msg.setMulticastMsg(multicastMsg);
-			new Thread(new MessageFlooder(messagepasser, msg)).start();
+			try {
+				messagepasser.send(msg);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 	}
 }

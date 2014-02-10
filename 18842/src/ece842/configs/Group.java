@@ -24,7 +24,6 @@ public class Group {
 		this.members = new HashSet<String>();
 		this.groupClock = null;
 		this.multicastsvc = new MulticastService();
-		// this.holdQueue = new HashMap<String, Message>();
 		this.holdQueue = new PriorityBlockingQueue<Message>(100,
 				new MulticastMessageComparator());
 	}
@@ -51,7 +50,6 @@ public class Group {
 
 	public void insertHoldQueue(Message msg) {
 		this.holdQueue.add(msg);
-	//			.put(msg.getMulticastMsg().getTimeStamp().toString(), msg);
 	}
 
 	@Override
