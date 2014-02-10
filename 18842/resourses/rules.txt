@@ -11,7 +11,6 @@ receiveRules :
 - action : duplicate 
   dest   : bob	        
   kind   : td4
-- action : delay    
 - action : drop    
   dest   : bob    
   kind   : td5
