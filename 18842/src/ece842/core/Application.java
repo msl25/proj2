@@ -1,13 +1,13 @@
 package ece842.core;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
 
 import ece842.configs.Configuration;
 import ece842.configs.Group;
 import ece842.services.ClockService;
+import ece842.services.GroupClock;
 import ece842.services.LogicalClock;
 import ece842.services.MulticastService;
 import ece842.services.VectorClock;
@@ -18,14 +18,14 @@ public class Application {
 	public static MessagePasser messagePasser;
 	public static ClockService localClock;
 	public static ClockService groupClock;
-	public static Map<String,Group> groups ; 
+	public static Map<String, Group> groups;
 	public static MulticastService multicastSvc;
-	
+
 	public static void main(String[] args) throws IOException {
 		id = args[1];
 		globalConf = new Configuration(args[0]);
 		groups = globalConf.getGroups();
-		
+
 		if (globalConf.getClockType().equals("logical"))
 			localClock = new LogicalClock();
 		else
@@ -34,13 +34,19 @@ public class Application {
 		try {
 			messagePasser = new MessagePasser(globalConf, id, localClock);
 		} catch (IOException e) {
-
-			System.out.println("Error initialing MessagerPasser: " + e.getMessage());
-			e.printStackTrace();		
-
+			System.out.println("Error initialing MessagerPasser: "
+					+ e.getMessage());
+			e.printStackTrace();
 			System.exit(1);
 		}
-		
+
+		Map<String, Group> groupConf = globalConf.getGroups();
+		for (String gName : groupConf.keySet()) {
+			Group g = groupConf.get(gName);
+			if (g.isMember(id)) {
+				g.setGroupClock(new GroupClock(globalConf, gName));
+			}
+		}
 
 		Scanner scanIn = new Scanner(System.in);
 		System.out
@@ -85,7 +91,7 @@ public class Application {
 		String kind = scanIn.nextLine();
 		System.out.println("\nEnter Data:");
 		String data = scanIn.nextLine();
-		
+
 		System.out.println("\nLogging? (y/n)");
 		String choice = scanIn.nextLine();
 
@@ -96,7 +102,7 @@ public class Application {
 		} else {
 			Message message = new TimeStampedMessage(dest, kind, data);
 			try {
-				message.setSource(id); //XXX
+				message.setSource(id); // XXX
 				messagePasser.send(message);
 				/* Sending the same message to logger */
 				if (choice.equalsIgnoreCase("y")) {
@@ -128,19 +134,26 @@ public class Application {
 		Message message = null;
 		message = messagePasser.receive();
 		if (message != null) {
-			System.out
-					.println(String
-							.format("Message received from %s. with seqNo:%s Request Type:%s, Duplicate Flag is %s, Data is as follows:%s\n",
-									message.getSource(),
-									message.getSequenceNumber(),
-									message.getKind(), message.getDupe(),
-									message.getData()));
-
+			if (message.getMulticastMsg() != null) {
+				MulticastMessage mc = message.getMulticastMsg();
+				System.out.println(String.format(
+						"Group name[%s] GroupTS:[%s] Message[%s]\n",
+						mc.getGroupName(), mc.getTimeStamp().toString(),
+						message.getData()));
+			} else {
+				System.out
+						.println(String
+								.format("Message received from %s. with seqNo:%s Request Type:%s, Duplicate Flag is %s, Data is as follows:%s\n",
+										message.getSource(),
+										message.getSequenceNumber(),
+										message.getKind(), message.getDupe(),
+										message.getData()));
+			}
 			if (choice.equalsIgnoreCase("y")) {
 				Message msg = new TimeStampedMessage("logger", "log",
 						message.toString());
 				msg.setSource(id);
-				localClock.getNewTimeStamp(); 
+				localClock.getNewTimeStamp();
 				msg.setTimestamp(localClock.getClock());
 				messagePasser.sendMessage(msg);
 			}
@@ -151,17 +164,27 @@ public class Application {
 	}
 
 	private static void handleMulticast(MessagePasser messagepasser, Message msg) {
-		
-		//get group from group name
+
+		// get group from group name
 		Group myGroup = groups.get(msg.getDest());
-		
-		if(myGroup.getGroupClock()==null) {
-			//TODO
-			groupClock = new VectorClock(globalConf, id);
-			//groupClock.getNewTimeStamp();
-			myGroup.setGroupClock(groupClock);
+
+		if (myGroup == null) {
+			System.err.println("Group " + myGroup + " does not exist.");
+			return;
 		}
-		//messagePasser = new MessagePasser(globalConf, id, myGroup.getGroupClock());
+
+		if (!myGroup.isMember(id)) {
+			System.err
+					.println("Cannot send a message to a group of which you are not a member.");
+			return;
+		}
+
+		// if(myGroup.getGroupClock()==null) {
+		// groupClock = new VectorClock(globalConf, id);
+		// myGroup.setGroupClock(groupClock);
+		// }
+		// messagePasser = new MessagePasser(globalConf, id,
+		// myGroup.getGroupClock());
 		myGroup.getMulticastsvc().multicastSend(messagepasser, msg, myGroup);
 	}
 }

@@ -7,10 +7,12 @@ public class MulticastMessage implements Serializable {
 	
 	private TimeStamp timeStamp;
 	private String GroupName;
+	private String origSender;
 	
-	public MulticastMessage(TimeStamp ts, String grpName) {
+	public MulticastMessage(TimeStamp ts, String grpName, String oSender) {
 		this.timeStamp = ts;
 		this.GroupName = grpName;
+		this.origSender = oSender;
 	}
 	public TimeStamp getTimeStamp() {
 		return timeStamp;
@@ -20,6 +22,9 @@ public class MulticastMessage implements Serializable {
 	}
 	public String getGroupName() {
 		return GroupName;
+	}
+	public String getOriginalSender() {
+		return this.origSender;
 	}
 	public void setGroupName(String groupName) {
 		GroupName = groupName;

@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import ece842.actions.ActionFactory;
@@ -29,7 +30,7 @@ import ece842.services.ClockService;
 public class MessagePasser {
 
 	LinkedBlockingQueue<Message> temp = new LinkedBlockingQueue<Message>();
-
+	
 	private class RecvThread implements Runnable {
 
 		@Override
@@ -131,12 +132,6 @@ public class MessagePasser {
 		if (rxMessage == null) {
 			return;
 		}
-		// if (rxMessage != null) {
-		// if (rxMessage.getMulticastMsg() != null)
-		// receiveMulticastMsg(rxMessage);
-		// else
-		// receivedMessages.add(rxMessage);
-		// }
 
 		this.configuration.updateRules();
 		List<Message> messages = new ArrayList<Message>();
@@ -187,6 +182,10 @@ public class MessagePasser {
 		}
 	}
 
+	public String getLocalId() {
+		return this.id;
+	}
+
 	public Message receiveMessage() {
 		try {
 			byte[] recvBuf = new byte[5000];
@@ -214,22 +213,23 @@ public class MessagePasser {
 	public void receiveMulticastMsg(Message rxMsg) {
 
 		boolean isPresent = false;
-		boolean isReceivable = true;
+		boolean isReliable = true;
+		MulticastMessage innerMsg = rxMsg.getMulticastMsg();
+		TimeStamp multicastTimeStamp = rxMsg.getMulticastMsg().getTimeStamp();
+		String groupName = rxMsg.getMulticastMsg().getGroupName();
+		Group group = configuration.getGroups().get(groupName);
+		String originalSender = innerMsg.getOriginalSender();
 
 		Map<String, Integer> nodeMap = new HashMap<String, Integer>();
-		Group groupName = configuration.getGroups().get(
-				rxMsg.getMulticastMsg().getGroupName());
 
 		// Check whether nodeMap is already created
-		if (AckMap.containsKey(rxMsg.getMulticastMsg().getTimeStamp()
-				.toString()))
-			nodeMap = AckMap.get(rxMsg.getMulticastMsg().getTimeStamp()
-					.toString());
+		if (AckMap.containsKey(multicastTimeStamp.toString()))
+			nodeMap = AckMap.get(multicastTimeStamp.toString());
 		else {
 			nodeMap = new HashMap<String, Integer>();
 			// Multicast the same msg
 			if (!rxMsg.getSource().equalsIgnoreCase(rxMsg.getDest())) {
-				Collection<String> sendTo = groupName.getMembers();
+				Collection<String> sendTo = group.getMembers();
 				for (String s : sendTo) {
 					Message msg = new TimeStampedMessage(s, rxMsg.getKind(),
 							rxMsg.getData().toString());
@@ -254,27 +254,66 @@ public class MessagePasser {
 		}
 
 		nodeMap.put(rxMsg.getSource(), 1);
-		AckMap.put(rxMsg.getMulticastMsg().getTimeStamp().toString(), nodeMap);
+		AckMap.put(multicastTimeStamp.toString(), nodeMap);
 
 		// Insert into holdQueue
 		if (!isPresent) {
-			groupName.insertHoldQueue(rxMsg);
+			group.insertHoldQueue(rxMsg);
 		}
 
 		// Add to receive buffer
-		Collection<String> members = groupName.getMembers();
+		Collection<String> members = group.getMembers();
 		for (String m : members) {
 			if (!nodeMap.containsKey(m) || nodeMap.get(m) != 1) {
-				isReceivable = false;
+				isReliable = false;
 				break;
 			}
 		}
-		if (isReceivable) {
+		if (isReliable) {
 			// remove from holdQueue
-			Message temp = groupName.removeHoldQueue(rxMsg.getMulticastMsg()
-					.getTimeStamp());
-			if (temp != null) {
-				this.messagesReadyToBeDelivered.add(rxMsg);
+			PriorityBlockingQueue<Message> holdQueue = group.getHoldQueue();
+
+			while (true) {
+				Message first = holdQueue.peek();
+				if (first == null) {
+					break;
+				}
+
+				MulticastMessage mcast = first.getMulticastMsg();
+				TimeStamp mcastTS = mcast.getTimeStamp();
+				TimeStamp groupTS = group.getGroupClock().getTimeStamp();
+				boolean removed = false;
+				int ts1 = mcastTS.getTimeStampValue(originalSender);
+				int ts2 = groupTS.getTimeStampValue(originalSender);
+
+				if (ts1 == ts2 + 1) {
+					boolean allLt = true;
+					for (String member : group.getMembers()) {
+						if (member.compareTo(originalSender) != 0) {
+							if (mcastTS.getTimeStampValue(member) > groupTS
+									.getTimeStampValue(member)) {
+								allLt = false;
+								break;
+							}
+						}
+					}
+					if (allLt) {
+						try {
+							Message msg = holdQueue.take();
+							group.getGroupClock().incrementTimestamp(
+									originalSender);
+
+							this.messagesReadyToBeDelivered.add(msg);
+							removed = true;
+						} catch (InterruptedException e) {
+							e.printStackTrace();
+						}
+					}
+				}
+
+				if (!removed) {
+					break;
+				}
 			}
 		}
 	}

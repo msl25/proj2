@@ -8,8 +8,6 @@ public class TimeStampedMessage extends Message implements Serializable {
 	private TimeStamp timestamp;
 	private MulticastMessage multicastMsg;
 	
-	
-
 	public TimeStampedMessage(String dest, String kind, String data) {
 		super(dest, kind, data);
 		this.timestamp = new TimeStamp();

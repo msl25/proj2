@@ -19,6 +19,10 @@ public class TimeStamp implements Serializable, Comparable<TimeStamp> {
 		this.timeStamp.put(id, this.timeStamp.get(id) + 1);
 	}
 	
+	public void setTimeStampValue(String id, int value) {
+		this.timeStamp.put(id, value);
+	}
+	
 	public int getTimeStampValue(String id) {
 		return this.timeStamp.get(id);
 	}
@@ -36,5 +40,11 @@ public class TimeStamp implements Serializable, Comparable<TimeStamp> {
 		   s= String.format("%s%s:%d ", s, key, this.timeStamp.get(key));
 		}
 		return s;
+	}
+	
+	public TimeStamp clone() {
+		TimeStamp ts = new TimeStamp();
+		ts.timeStamp = new HashMap<String,Integer>(this.timeStamp);
+		return ts;
 	}
 }

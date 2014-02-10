@@ -27,4 +27,5 @@ public class LogicalClock extends ClockService{
 	public TimeStamp getClock() {
 		return time;
 	}
+
 }

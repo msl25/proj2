@@ -3,8 +3,7 @@ package ece842.services;
 import ece842.configs.Configuration;
 import ece842.core.TimeStamp;
 
-public class VectorClock extends ClockService{
-	
+public class VectorClock extends ClockService {
 	public VectorClock (Configuration globalConf, String id) {
 		this.id = id;
 		this.time = new TimeStamp();
